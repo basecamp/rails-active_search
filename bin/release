@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+VERSION=$1
+
+if [ -z "$VERSION" ]
+then
+  echo "Usage: bin/release <version>"
+  exit 1
+fi
+
+printf "module ActiveSearch\n  # Returns the ActiveSearch gem version.\n  VERSION = \"$VERSION\"\nend\n" > ./lib/active_search/version.rb
+bundle
+BUNDLE_GEMFILE=gemfiles/elasticsearch7.gemfile bundle
+BUNDLE_GEMFILE=gemfiles/elasticsearch8.gemfile bundle
+git add Gemfile.lock gemfiles/*.lock lib/active_search/version.rb
+git commit -m "Bump version for $VERSION"
+git push
+git tag v$VERSION
+git push --tags
+gem build rails-active_search.gemspec
+gem push "rails-active_search-$VERSION.gem" --host https://rubygems.org
+rm "rails-active_search-$VERSION.gem"
