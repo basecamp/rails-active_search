@@ -1,0 +1,2 @@
+class ArticleDocument < ApplicationRecord
+end

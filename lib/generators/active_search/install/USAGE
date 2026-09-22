@@ -1,0 +1,20 @@
+Description:
+    Writes config/search.yml and config/search.rb.
+
+    config/search.yml says which store each environment searches through.
+    config/search.rb is where each index is declared. Neither file is
+    overwritten if it is already there.
+
+    --adapter says what development and test search through. It defaults to
+    sqlite, which needs no connection details because a database adapter takes
+    them from the document class. Every other adapter defaults to localhost on
+    its own port, so a local instance needs no connection details either. It
+    may still need the index itself: a Solr core, for one. Typesense is the
+    exception and has no default key, so set TYPESENSE_API_KEY.
+
+Example:
+    bin/rails active_search:install
+    bin/rails active_search:install ADAPTER=elasticsearch
+
+    creates: config/search.yml
+    creates: config/search.rb

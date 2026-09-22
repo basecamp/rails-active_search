@@ -1,0 +1,2 @@
+class ProductDocument < ApplicationRecord
+end

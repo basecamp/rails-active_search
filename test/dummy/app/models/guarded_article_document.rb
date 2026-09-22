@@ -1,0 +1,2 @@
+class GuardedArticleDocument < ApplicationRecord
+end

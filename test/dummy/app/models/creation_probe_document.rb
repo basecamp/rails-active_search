@@ -1,0 +1,2 @@
+class CreationProbeDocument < ApplicationRecord
+end

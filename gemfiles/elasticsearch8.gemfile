@@ -1,0 +1,6 @@
+# The Elasticsearch 8 job needs its own lockfile so its bundle can be cached like every other
+# job's. Without one it resolved gems from scratch on every run, which cost 76s and meant an
+# unrelated gem release could change what CI tested.
+ENV["ELASTICSEARCH_VERSION"] = "8"
+
+eval_gemfile File.expand_path("../Gemfile", __dir__)

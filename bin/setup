@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Installing dependencies ==="
+bundle install
+
+echo "=== Setting up test database ==="
+bin/rails db:create db:migrate RAILS_ENV=test
+
+echo "=== Starting Elasticsearch ==="
+docker compose up -d elasticsearch
+
+echo "=== Waiting for Elasticsearch to be ready ==="
+until curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+  echo "Waiting for Elasticsearch..."
+  sleep 2
+done
+echo "Elasticsearch is ready"
+
+echo "=== Setup complete ==="
+echo ""
+echo "To run tests with SQLite (default):"
+echo "  bin/rails test"
+echo ""
+echo "To run tests with Elasticsearch:"
+echo "  SEARCH_ADAPTER=elasticsearch bin/rails test"
+echo ""
+echo "To run tests with MySQL:"
+echo "  docker compose up -d mysql"
+echo "  DB_ADAPTER=mysql SEARCH_ADAPTER=mysql bin/rails test"

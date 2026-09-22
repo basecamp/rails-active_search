@@ -1,0 +1,31 @@
+Description:
+    Declares a search index in config/search.rb and adds has_search to the model.
+
+    Pass the model name and a list of field:type pairs. Types are
+    <%= ActiveSearch::Index::Field::VALID_TYPES.join(", ") %>.
+
+    A field with no type is text, because searching is the common intent and a
+    string field is not searched. That is deliberately not the string default
+    rails generate model uses.
+
+    A third segment carries modifiers, the slot rails generate model uses for
+    index. The modifier is multiple.
+
+    The fields you name are the fields the index holds. Nothing is read from the
+    table, because choosing what is searchable and what is filterable is the
+    declaration rather than boilerplate.
+
+Example:
+    bin/rails generate active_search:index Article title body:text status:string
+
+    Appends to config/search.rb:
+        ActiveSearch.define_index(:articles) do
+          text :title
+          text :body
+          string :status
+        end
+
+    And adds to app/models/article.rb:
+        has_search
+
+    bin/rails generate active_search:index Article commenters:string:multiple

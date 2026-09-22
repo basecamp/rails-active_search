@@ -1,0 +1,535 @@
+name: CI
+
+on:
+  pull_request:
+  # Only the default branch. A branch with an open pull request otherwise ran the matrix twice.
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+# A second push supersedes the first. Not on main, where every merge is tested to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      RUBY_VERSION: ruby-3.4.7
+      RUBOCOP_CACHE_ROOT: tmp/rubocop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Prepare RuboCop cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        env:
+          DEPENDENCIES_HASH: ${{ hashFiles('**/.rubocop.yml', '**/.rubocop_todo.yml', 'Gemfile.lock') }}
+        with:
+          path: ${{ env.RUBOCOP_CACHE_ROOT }}
+          key: rubocop-${{ runner.os }}-${{ env.RUBY_VERSION }}-${{ env.DEPENDENCIES_HASH }}-${{ github.ref_name == github.event.repository.default_branch && github.run_id || 'default' }}
+          restore-keys: |
+            rubocop-${{ runner.os }}-${{ env.RUBY_VERSION }}-${{ env.DEPENDENCIES_HASH }}-
+
+      - name: Lint code for consistent style
+        run: bin/rubocop -f github
+
+  test-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Run SQLite tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: sqlite
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-sqlite
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: active_search_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Run MySQL tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: mysql
+          DB_ADAPTER: mysql
+          MYSQL_PASSWORD: password
+          MYSQL_PORT: 3306
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-mysql
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-postgresql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18@sha256:1957b2ff3137e4ef7f3bc813e74fff50b1e1ffddc85c8b9d6f14ade972be8687
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: active_search_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U postgres" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Run PostgreSQL tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: postgresql
+          DB_ADAPTER: postgresql
+          POSTGRES_PORT: 5432
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-postgresql
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-elasticsearch:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: elasticsearch:9.5.2@sha256:7b92af0bc2055e499c903ad631b40e646bd07edd8cf206da9b9265942925e5e2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+        options: --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Elasticsearch
+        run: |
+          until curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+            echo "Waiting for Elasticsearch..."
+            sleep 5
+          done
+
+      - name: Run Elasticsearch tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: elasticsearch
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-elasticsearch
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-elasticsearch7:
+    runs-on: ubuntu-latest
+    env:
+      ELASTICSEARCH_VERSION: "7"
+      # Its own lockfile, so this job's bundle is cached like every other job's.
+      BUNDLE_GEMFILE: gemfiles/elasticsearch7.gemfile
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17.18@sha256:5f99f2f450ca38aff315a4a8849e892934cafef0aee5e6ab5d894ede97a02ca9
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9202:9200
+        options: --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Elasticsearch
+        run: |
+          until curl -s http://localhost:9202/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+            echo "Waiting for Elasticsearch 7..."
+            sleep 5
+          done
+
+      - name: Run Elasticsearch 7 tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: elasticsearch
+          ES_PORT: 9202
+          ELASTICSEARCH_VERSION: "7"
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-elasticsearch7
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-elasticsearch8:
+    runs-on: ubuntu-latest
+    env:
+      ELASTICSEARCH_VERSION: "8"
+      # Its own lockfile, so this job's bundle is cached like every other job's.
+      BUNDLE_GEMFILE: gemfiles/elasticsearch8.gemfile
+    services:
+      elasticsearch:
+        image: elasticsearch:8.19.20@sha256:7c6a3d514563848873ae3e0e2e36502382842ebae38134a59e91214e8fcdabf3
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9203:9200
+        options: --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Elasticsearch
+        run: |
+          until curl -s http://localhost:9203/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+            echo "Waiting for Elasticsearch 8..."
+            sleep 5
+          done
+
+      - name: Run Elasticsearch 8 tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: elasticsearch
+          ES_PORT: 9203
+          ELASTICSEARCH_VERSION: "8"
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-elasticsearch8
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-opensearch:
+    runs-on: ubuntu-latest
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:3.8.0@sha256:bcc1797519726ceb6d651d4a3e60b7c30da91793914a8dfe75fd441d4f641509
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9201:9200
+        options: --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for OpenSearch
+        run: |
+          until curl -s http://localhost:9201/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+            echo "Waiting for OpenSearch..."
+            sleep 5
+          done
+
+      - name: Run OpenSearch tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: opensearch
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-opensearch
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-meilisearch:
+    runs-on: ubuntu-latest
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.53.1@sha256:8d6643d86d71fad6ad3cba92cde7ccfce9e4d6c384bda67598eb553571c32431
+        env:
+          MEILI_ENV: development
+          MEILI_NO_ANALYTICS: "true"
+          MEILI_MAX_INDEXING_MEMORY: 256Mb
+          MEILI_MAX_INDEXING_THREADS: "2"
+        ports:
+          - 7700:7700
+        options: --health-cmd="curl -f http://localhost:7700/health" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Meilisearch
+        run: |
+          until curl -s http://localhost:7700/health | grep -q 'available'; do
+            echo "Waiting for Meilisearch..."
+            sleep 2
+          done
+
+      - name: Run Meilisearch tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: meilisearch
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-meilisearch
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-typesense:
+    runs-on: ubuntu-latest
+    services:
+      typesense:
+        image: typesense/typesense:30.2@sha256:610f2d34b1f93d00762869da2c67736775e5798d19a2c8b91b014b8a0cc1e110
+        ports:
+          - 8108:8108
+        volumes:
+          - /tmp/typesense-data:/data
+        options: --health-cmd="bash -c 'echo > /dev/tcp/localhost/8108'" --health-interval=2s --health-timeout=5s --health-retries=45
+        env:
+          TYPESENSE_API_KEY: xyz
+          TYPESENSE_DATA_DIR: /data
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Typesense
+        run: |
+          until curl -s http://localhost:8108/health | grep -q 'ok'; do
+            echo "Waiting for Typesense..."
+            sleep 2
+          done
+
+      - name: Run Typesense tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: typesense
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-typesense
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-solr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Start Solr with cores
+        run: |
+          docker run -d --name solr -p 8983:8983 solr:9.10.1@sha256:1f055b0260d3efb177b12d6a46e9ef510fb4d2616473a91f8f4d099384aa176a bash -c "precreate-core article && precreate-core articles && precreate-core records && precreate-core comments && precreate-core products && precreate-core external && precreate-core guarded_articles && precreate-core unless_guarded_articles && precreate-core proc_guarded_articles && precreate-core namespaced_tests && precreate-core topics && solr-foreground"
+          # Wait for Solr to be ready
+          until curl -s http://localhost:8983/solr/articles/admin/ping 2>/dev/null | grep -q '"status":"OK"'; do
+            echo "Waiting for Solr..."
+            sleep 5
+          done
+          # Verify Schema API is responding for all cores
+          for core in article articles records comments products external guarded_articles unless_guarded_articles proc_guarded_articles namespaced_tests; do
+            until curl -s "http://localhost:8983/solr/$core/schema/fields" 2>/dev/null | grep -q '"fields"'; do
+              echo "Waiting for $core schema API..."
+              sleep 2
+            done
+          done
+          echo "Solr is fully ready"
+
+      - name: Run Solr tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: solr
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-solr
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-redis-search:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis/redis-stack:7.4.0-v8@sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Run Redis Search tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: redis_search
+          REDIS_PORT: 6379
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-redis-search
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  test-manticore:
+    runs-on: ubuntu-latest
+    services:
+      manticore:
+        image: manticoresearch/manticore:29.0.2@sha256:647ff5da4de6361eb043417a8f19b9e05041d3cfa1c3566665c07bc872cd15c3
+        ports:
+          - 9308:9308
+          - 9306:9306
+        options: --health-cmd="curl -s http://localhost:9308 || true" --health-interval=2s --health-timeout=5s --health-retries=45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Wait for Manticore
+        run: |
+          # Manticore returns an error message on / but that means it's running
+          until curl -s http://localhost:9308 2>/dev/null; do
+            echo "Waiting for Manticore..."
+            sleep 5
+          done
+          echo "Manticore is ready"
+
+      - name: Run Manticore tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: manticore
+        run: bin/rails db:test:prepare && bin/rails test
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: screenshots-manticore
+          path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore

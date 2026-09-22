@@ -1,0 +1,7 @@
+class <%= document_class_name %> < ApplicationRecord
+<% if inheritance_column_field -%>
+  # <%= inheritance_column_field %> is a declared field here, and would otherwise make this table
+  # single table inheritance.
+  self.inheritance_column = nil
+<% end -%>
+end

@@ -1,0 +1,6 @@
+# Define your search indexes here.
+#
+#   ActiveSearch.define_index(:articles) do
+#     text :title
+#     integer :account_id
+#   end

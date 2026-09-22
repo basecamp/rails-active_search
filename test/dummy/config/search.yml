@@ -1,0 +1,27 @@
+test:
+  adapter: <%= ENV.fetch("SEARCH_ADAPTER", "sqlite") %>
+<% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "elasticsearch" %>
+  hosts:
+    - host: localhost
+      port: <%= ENV.fetch("ES_PORT", 9200) %>
+<% end %>
+<% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "opensearch" %>
+  hosts:
+    - host: localhost
+      port: <%= ENV.fetch("OPENSEARCH_PORT", 9201) %>
+<% end %>
+<% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "redis_search" %>
+  port: <%= ENV.fetch("REDIS_PORT", 6380) %>
+<% end %>
+<% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "typesense" %>
+  api_key: <%= ENV.fetch("TYPESENSE_API_KEY", "xyz") %>
+<% end %>
+
+development:
+  adapter: sqlite
+
+production:
+  adapter: elasticsearch
+  hosts:
+    - host: localhost
+      port: 9200

@@ -1,0 +1,2 @@
+class CollectionProbeDocument < ApplicationRecord
+end

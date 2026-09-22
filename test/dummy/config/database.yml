@@ -1,0 +1,39 @@
+<% sqlite = !%w[ mysql postgresql ].include?(ENV.fetch("SEARCH_ADAPTER", nil)) %>
+
+default: &default
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  timeout: 5000
+
+sqlite: &sqlite
+  <<: *default
+  adapter: sqlite3
+  schema_dump: schema_sqlite.rb
+
+mysql: &mysql
+  <<: *default
+  adapter: mysql2
+  host: <%= ENV.fetch("MYSQL_HOST", "127.0.0.1") %>
+  port: <%= ENV.fetch("MYSQL_PORT", 3307) %>
+  username: <%= ENV.fetch("MYSQL_USER", "root") %>
+  password: <%= ENV.fetch("MYSQL_PASSWORD", "password") %>
+  schema_dump: schema_mysql.rb
+
+postgresql: &postgresql
+  <<: *default
+  adapter: postgresql
+  host: <%= ENV.fetch("POSTGRES_HOST", "127.0.0.1") %>
+  port: <%= ENV.fetch("POSTGRES_PORT", 5433) %>
+  username: <%= ENV.fetch("POSTGRES_USER", "postgres") %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", "password") %>
+  schema_dump: schema_postgresql.rb
+
+development:
+  <<: *<%= sqlite ? "sqlite" : ENV["SEARCH_ADAPTER"] %>
+  database: <%= sqlite ? "storage/development-#{ENV["SEARCH_ADAPTER"] || "sqlite"}.sqlite3" : "active_search_development" %>
+
+test:
+  <<: *<%= sqlite ? "sqlite" : ENV["SEARCH_ADAPTER"] %>
+  database: <%= sqlite ? "storage/test-#{ENV["SEARCH_ADAPTER"] || "sqlite"}.sqlite3" : "active_search_test" %>
+
+production:
+  <<: *sqlite

@@ -1,0 +1,33 @@
+# Which store each index is written to and searched in. One stanza per environment, or a named
+# store per stanza when an index names one with store_name:.
+#
+# Adapters: <%= ActiveSearch.configuration.registered_adapter_names.join(", ") %>.
+# A database adapter takes its connection from the document class and reads nothing here beyond
+# the adapter name. Every other adapter defaults to localhost on its own port.
+<% unless database_adapter? -%>
+#
+# index_prefix keeps development and test off each other's indexes: they share one store, so
+# without it `rails test` would write to and delete the index the development app reads.
+<% end -%>
+development:
+  adapter: <%= adapter %>
+<% unless database_adapter? -%>
+  index_prefix: development_
+<% end -%>
+<% if api_key_needed? -%>
+  api_key: <%%= ENV["TYPESENSE_API_KEY"].to_json %>
+<% end -%>
+
+test:
+  adapter: <%= adapter %>
+<% unless database_adapter? -%>
+  index_prefix: test_
+<% end -%>
+<% if api_key_needed? -%>
+  api_key: <%%= ENV["TYPESENSE_API_KEY"].to_json %>
+<% end -%>
+
+# A local setup. See "Adapter Setup" in the ActiveSearch README for what <%= adapter %> takes
+# elsewhere -- a database adapter takes nothing, and the rest differ.
+# production:
+#   adapter: <%= adapter %>
