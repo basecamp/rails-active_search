@@ -16,6 +16,7 @@ This is **alpha** software. The API is not fixed and may have backward incompati
 - [Configuration](#configuration)
   - [Named adapters](#named-adapters)
   - [Index prefix](#index-prefix)
+  - [Moving to another store](#moving-to-another-store)
   - [Database adapters](#database-adapters)
   - [Search engine adapters](#search-engine-adapters)
 - [Indexing](#indexing)
@@ -150,6 +151,65 @@ development:
   adapter: elasticsearch
   index_prefix: development_
 ```
+
+### Moving to another store
+
+To move a model from one store to another, for example from the database to Typesense, declare a
+second index on the new store and connect the model to both. Every save then writes to both
+indexes, and searches read the old one until you choose the new one.
+
+```ruby
+# config/search.rb
+article_fields = proc do
+  text :title
+  text :content
+  integer :account_id
+end
+
+ActiveSearch.define_index(:articles, &article_fields)
+ActiveSearch.define_index(:typesense_articles, source: "Article", store_name: :typesense,
+  index_name: :articles, &article_fields)
+```
+
+```ruby
+class Article < ApplicationRecord
+  has_search index: :articles
+  has_search index: :typesense_articles
+end
+```
+
+Create the new index (see [Commands](#commands)), deploy, and then fill it with the records saved
+before the deploy:
+
+```ruby
+ActiveSearch.index(:typesense_articles).batch do |batch|
+  Article.find_each { |article| batch.add(article) }
+end
+```
+
+`batch.add` does not check the `has_search` guards, so walk only the records that pass them.
+
+Pass `index:` to read from the new index:
+
+```ruby
+Article.search("rails", index: :typesense_articles)
+```
+
+To switch with a feature flag, choose the index in one method and pass that:
+
+```ruby
+class Article < ApplicationRecord
+  def self.search_index_name
+    Flipper.enabled?(:typesense_search) ? :typesense_articles : :articles
+  end
+end
+
+Article.search("rails", index: Article.search_index_name)
+```
+
+Stores differ in what they support, and a query the new store cannot run raises
+`UnsupportedOperationError`. Compare the two indexes' [capabilities](#capabilities) before you
+switch. When every search reads the new index, remove the old `has_search` and `define_index`.
 
 ### Database adapters
 
