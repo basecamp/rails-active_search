@@ -31,25 +31,32 @@ module ActiveSearch
             table = model.table_name
             fts_table = "#{table}_fts"
             fts_query = build_fts_query(query_context)
-            escaped = model.connection.quote(fts_query)
+            # A query of only operators sanitizes to nothing, and FTS5 refuses an empty MATCH.
+            match = fts_query ? "#{fts_table}.#{fts_table} MATCH #{model.connection.quote(fts_query)}" : "1 = 0"
 
             model
               .select(Arel.sql(id_select_sql(model, index)), "#{fts_table}.rank AS score")
               .joins("INNER JOIN #{fts_table} ON #{fts_table}.rowid = #{table}.rowid")
-              .where(Arel.sql("#{fts_table}.#{fts_table} MATCH #{escaped}"))
+              .where(Arel.sql(match))
           end
 
           def build_fts_query(query_context)
             query = query_context.query
             fields = query_context.fields
 
-            # FTS5 column filter syntax: {col1 col2} : query.
+            sanitized = sanitize_fts_query(query)
+            return if sanitized.empty?
+
+            # FTS5 column filter syntax: {col1 col2} : query. Parenthesized, since the filter
+            # otherwise binds only to the first phrase and later terms match every column.
             field_list = fields.map(&:to_s).join(" ")
-            "{#{field_list}} : #{sanitize_fts_query(query)}"
+            "{#{field_list}} : (#{sanitized})"
           end
 
           FTS5_BAREWORD = /\A\w+\z/
           FTS5_STANDALONE_OPERATORS = /\A[|+\-*^]+\z/
+          # Barewords FTS5 reads as operators. Case-sensitive, as FTS5 is: "or" is a plain word.
+          FTS5_KEYWORDS = %w[ AND OR NOT ].freeze
 
           # Quotes anything that is not a plain bareword, so every FTS5-significant character (C++,
           # test@example.com, an unbalanced ") reads as literal text rather than syntax. Listing the
@@ -69,7 +76,8 @@ module ActiveSearch
                 remaining = word.post_match
 
                 unless term.match?(FTS5_STANDALONE_OPERATORS)
-                  result << (term.match?(FTS5_BAREWORD) ? term : "\"#{term.gsub('"', '""')}\"")
+                  bareword = term.match?(FTS5_BAREWORD) && !FTS5_KEYWORDS.include?(term)
+                  result << (bareword ? term : "\"#{term.gsub('"', '""')}\"")
                 end
               else
                 remaining = remaining.lstrip

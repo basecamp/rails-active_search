@@ -298,6 +298,38 @@ class SqliteTest < ActiveSupport::TestCase
     assert_equal 1, results.total
   end
 
+  test "fields restricts every term, not only the first" do
+    article = Article.create!(title: "alpha", content: "secretword", account_id: 1)
+    ActiveSearch.index(:articles).add(article)
+
+    assert_equal 1, ActiveSearch.index(:articles).search("alpha secretword").results.total, "control"
+    assert_equal 0, ActiveSearch.index(:articles).search("alpha secretword", fields: [ :title ]).results.total,
+      "secretword is only in content, so a title-only search must not match it"
+  end
+
+  test "AND, OR and NOT are words, not operators" do
+    article1 = Article.create!(title: "alpha", content: "first", account_id: 1)
+    article2 = Article.create!(title: "other", content: "second", account_id: 1)
+    [ article1, article2 ].each { |a| ActiveSearch.index(:articles).add(a) }
+
+    assert_equal 0, ActiveSearch.index(:articles).search("alpha OR other").results.total,
+      "without operators every term is required, and no document has all three"
+
+    %w[ OR AND NOT ].each do |keyword|
+      assert_equal 0, ActiveSearch.index(:articles).search(keyword).results.total
+      assert_equal 0, ActiveSearch.index(:articles).search("alpha #{keyword}").results.total
+    end
+  end
+
+  test "a query of only operators matches nothing rather than raising" do
+    article = Article.create!(title: "test content", content: "some text", account_id: 1)
+    ActiveSearch.index(:articles).add(article)
+
+    [ "-", "+", "|", "+++", "- |" ].each do |query|
+      assert_equal 0, ActiveSearch.index(:articles).search(query).results.total, "#{query.inspect} must not raise"
+    end
+  end
+
   test "quoted phrases are preserved" do
     article1 = Article.create!(title: "hello world today", content: "greeting", account_id: 1)
     article2 = Article.create!(title: "world hello", content: "reversed", account_id: 1)
