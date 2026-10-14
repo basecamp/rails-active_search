@@ -47,6 +47,14 @@ class RemoveByFilterTest < ActiveSupport::TestCase
     assert_equal 3, index.search("shared").results.total, "nothing was removed"
   end
 
+  test "a filter that normalizes to no conditions raises rather than emptying the index" do
+    # What account_id: params[:from]..params[:to] gives when neither param is sent.
+    assert_raises(ActiveSearch::QueryError) { index.remove_by_filter(account_id: nil..nil) }
+
+    refresh
+    assert_equal 3, index.search("shared").results.total, "nothing was removed"
+  end
+
   test "an undeclared field is refused, as it is for a search" do
     assert_raises(ActiveSearch::QueryError) { index.remove_by_filter(nonexistent: 1) }
   end

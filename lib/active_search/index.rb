@@ -164,6 +164,8 @@ module ActiveSearch
 
       # Built through Query, so the filter gets the validation and casting a search would get.
       context = all.filter(conditions).send(:query_context_with_defaults)
+      # Checked again once built: a filter can normalize to nothing, as nil..nil does.
+      raise QueryError, "remove_by_filter requires filter conditions" if context.conditions.empty?
 
       ActiveSupport::Notifications.instrument("remove_by_filter.active_search",
         index: name, store_name: configured_store_name) do |payload|
