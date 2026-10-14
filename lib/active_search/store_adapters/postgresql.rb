@@ -137,7 +137,7 @@ module ActiveSearch
         end
 
         def extract_text_search_config(options)
-          config = options.delete(:text_search_config) || DEFAULT_TEXT_SEARCH_CONFIG
+          config = options.delete(:text_search_config) { DEFAULT_TEXT_SEARCH_CONFIG }
 
           unless (config.is_a?(String) || config.is_a?(Symbol)) && !config.to_s.strip.empty?
             raise ConfigurationError,
