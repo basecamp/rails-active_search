@@ -62,7 +62,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-sqlite
@@ -100,7 +100,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-mysql
@@ -137,7 +137,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-postgresql
@@ -180,7 +180,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-elasticsearch
@@ -229,7 +229,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-elasticsearch7
@@ -278,7 +278,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-elasticsearch8
@@ -321,7 +321,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-opensearch
@@ -365,7 +365,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-meilisearch
@@ -409,7 +409,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-typesense
@@ -452,7 +452,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-solr
@@ -485,7 +485,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-redis-search
@@ -527,7 +527,7 @@ jobs:
         run: bin/rails db:test:prepare && bin/rails test
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: screenshots-manticore
