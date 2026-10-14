@@ -60,4 +60,64 @@ class PostgresqlTest < ActiveSupport::TestCase
       ).results
     end
   end
+
+  test "stems with the english configuration by default" do
+    article = Article.create!(title: "Running shoes", content: "Fast", account_id: 1)
+    ActiveSearch.index(:articles).add(article)
+
+    assert_equal [ article.id ], ActiveSearch.index(:articles).search("run").results.map(&:id)
+  end
+
+  test "text_search_config sets the configuration for documents, queries and highlights" do
+    with_text_search_config("simple") do
+      article = Article.create!(title: "Running shoes", content: "Fast", account_id: 1)
+      ActiveSearch.index(:articles).add(article)
+
+      assert_empty ActiveSearch.index(:articles).search("run").results
+      # english drops "the" as a stop word, so it would match everything and highlight nothing.
+      result = ActiveSearch.index(:articles).search("running").highlight(title: true).results.first
+      assert_equal article.id, result.id
+      assert_equal "<mark>Running</mark> shoes", result.hit.highlight(:title)
+    end
+  end
+
+  test "an unknown text_search_config raises from the database" do
+    with_text_search_config("klingon") do
+      article = Article.create!(title: "Ruby", content: "Guide", account_id: 1)
+
+      assert_raises(ActiveSearch::Error) { ActiveSearch.index(:articles).add(article) }
+    end
+  end
+
+  private
+    def with_text_search_config(config)
+      stores = ActiveSearch.configuration.instance_variable_get(:@stores)
+      name = ActiveSearch.index(:articles).send(:configured_store_name)
+      original = stores[name]
+      stores[name] = ActiveSearch::StoreAdapters::Postgresql.new(text_search_config: config)
+      yield
+    ensure
+      stores[name] = original
+    end
+end
+
+class PostgresqlTextSearchConfigTest < ActiveSupport::TestCase
+  test "defaults to english" do
+    assert_equal "english", ActiveSearch::StoreAdapters::Postgresql.new.text_search_config
+  end
+
+  test "takes a string or a symbol and keeps it out of the client options" do
+    store = ActiveSearch::StoreAdapters::Postgresql.new(text_search_config: :italian, max_result_window: 50)
+
+    assert_equal "italian", store.text_search_config
+    assert_equal({ max_result_window: 50 }, store.options)
+  end
+
+  test "rejects a value that cannot name a configuration" do
+    [ "", "  ", 42, [ "english" ] ].each do |value|
+      assert_raises(ActiveSearch::ConfigurationError, value.inspect) do
+        ActiveSearch::StoreAdapters::Postgresql.new(text_search_config: value)
+      end
+    end
+  end
 end

@@ -42,7 +42,7 @@ module ActiveSearch
           # goes through unchanged.
           def build_tsquery(model, query_context)
             conn = model.connection
-            "websearch_to_tsquery('english', #{conn.quote(query_context.query.to_s)})"
+            "websearch_to_tsquery(#{regconfig_sql(conn)}, #{conn.quote(query_context.query.to_s)})"
           end
       end
     end

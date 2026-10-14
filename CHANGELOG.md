@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The PostgreSQL adapter takes a `text_search_config` option naming the text search
+  configuration for documents, queries and highlights. It defaults to `english`, as before.
+
 ## 0.1.0
 
 Initial release. Active Search provides a common interface for full-text search of

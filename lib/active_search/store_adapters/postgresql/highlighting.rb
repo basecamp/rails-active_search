@@ -13,7 +13,7 @@ module ActiveSearch
               column = conn.quote_column_name(field)
               headline_alias = conn.quote_column_name("#{field}_hl")
 
-              "ts_headline('english', #{column}, #{tsquery}, #{conn.quote(headline_options(field_opts))}) AS #{headline_alias}"
+              "ts_headline(#{regconfig_sql(conn)}, #{column}, #{tsquery}, #{conn.quote(headline_options(field_opts))}) AS #{headline_alias}"
             end
           end
 
