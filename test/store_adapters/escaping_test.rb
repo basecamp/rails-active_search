@@ -22,6 +22,11 @@ class EscapingTest < ActiveSupport::TestCase
     assert_equal "ignore", sqlite_builder.send(:sanitize_fts_query, "+++ ignore")
   end
 
+  test "sqlite quotes the keyword operators, which are case-sensitive" do
+    assert_equal 'ruby "OR" rails "NOT" "AND"', sqlite_builder.send(:sanitize_fts_query, "ruby OR rails NOT AND")
+    assert_equal "ruby or rails", sqlite_builder.send(:sanitize_fts_query, "ruby or rails")
+  end
+
   test "redis escapes a caller supplied backslash so it cannot cancel the next escape" do
     escaped = redis_builder.send(:escape_filter_value, 'draft\\} @ssn:{*} #')
 
