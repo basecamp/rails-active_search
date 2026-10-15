@@ -84,6 +84,13 @@ class MultiValueStorageTest < ActiveSupport::TestCase
     assert_results elsewhere, @index.filter(account_id: 1).reject(folder_ids: 4)
   end
 
+  test "reject keeps a document whose collection is absent" do
+    topic("Filed", folder_ids: [ 4, 9 ])
+    unfiled = topic("Unfiled", folder_ids: nil)
+
+    assert_results unfiled, @index.filter(account_id: 1).reject(folder_ids: 4)
+  end
+
   test "a string collection filters the same way" do
     urgent = topic("Urgent", labels: %w[urgent later])
     topic("Calm", labels: %w[someday])
