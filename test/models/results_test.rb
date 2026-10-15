@@ -16,6 +16,16 @@ class ResultsTest < ActiveSupport::TestCase
     assert_equal 10, results.total
   end
 
+  test "limit returns limit" do
+    results = ActiveSearch::Results.new([], total: 10, definition: nil, source: source, limit: 3)
+    assert_equal 3, results.limit_value
+  end
+
+  test "offset returns offset" do
+    results = ActiveSearch::Results.new([], total: 10, definition: nil, source: source, offset: 3)
+    assert_equal 3, results.offset_value
+  end
+
   test "iteration loads AR objects via source" do
     article1 = Article.create!(title: "Results Test 1", content: "First", account_id: 1)
     article2 = Article.create!(title: "Results Test 2", content: "Second", account_id: 1)
