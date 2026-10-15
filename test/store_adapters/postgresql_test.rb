@@ -74,7 +74,7 @@ class PostgresqlTest < ActiveSupport::TestCase
       ActiveSearch.index(:articles).add(article)
 
       assert_empty ActiveSearch.index(:articles).search("run").results
-      # english drops "the" as a stop word, so it would match everything and highlight nothing.
+      # An english ts_headline would stem "Running" to "run", which would not match the simple "running" query.
       result = ActiveSearch.index(:articles).search("running").highlight(title: true).results.first
       assert_equal article.id, result.id
       assert_equal "<mark>Running</mark> shoes", result.hit.highlight(:title)
