@@ -39,9 +39,13 @@ class SqlserverTest < ActiveSupport::TestCase
   test "refresh resolves a configured store index name and accepts an already idle population" do
     index = ActiveSearch.define_index(:sqlserver_refresh_probe, source: "Article",
       index_name: :aliased_articles, document_class: "ArticleDocument") { text :title; text :content }
+    ActiveSearch.define_index(:sqlserver_other_store_probe, source: "Article",
+      store_name: :primary, index_name: :aliased_articles,
+      document_class: "ArticleDocument") { text :title; text :content }
 
     assert_nothing_raised { index.store.refresh(index.index_name) }
   ensure
     ActiveSearch.configuration.unregister_index(:sqlserver_refresh_probe)
+    ActiveSearch.configuration.unregister_index(:sqlserver_other_store_probe)
   end
 end

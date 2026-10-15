@@ -154,7 +154,11 @@ module ActiveSearch
         def models_for_store_name(index_name)
           indexes = ActiveSearch.index_names.filter_map do |name|
             index = ActiveSearch.index(name)
-            index if index.store.equal?(self) && index.index_name == index_name.to_sym
+            next unless index.index_name == index_name.to_sym
+
+            index if index.store.equal?(self)
+          rescue ConfigurationError
+            nil
           end
           if indexes.empty?
             raise ConfigurationError, "No index on this store uses the name :#{index_name}"
