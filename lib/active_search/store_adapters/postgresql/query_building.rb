@@ -29,13 +29,18 @@ module ActiveSearch
             "(#{tests.join(' OR ')})"
           end
           def apply_search(model, query_context, index, routing:)
-            fields = query_context.fields
-            vector_cols = fields.map { |f| "#{f}_vector" }.join(" || ")
+            vector_cols = vector_expression(query_context.fields)
             tsquery = build_tsquery(model, query_context)
 
             model
               .select(Arel.sql(id_select_sql(model, index)), "ts_rank(#{vector_cols}, #{tsquery}) AS score")
               .where(Arel.sql("(#{vector_cols}) @@ #{tsquery}"))
+          end
+
+          # Shared with the migration, whose expression index serves a search only when the query
+          # spells the expression the same way.
+          def vector_expression(names)
+            names.map { |name| "#{name}_vector" }.join(" || ")
           end
 
           # websearch_to_tsquery parses the user's own phrases, -exclusions and OR, so the query

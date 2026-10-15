@@ -224,6 +224,32 @@ class DatabaseMigrationTest < ActiveSupport::TestCase
     end
   end
 
+  test "a PostgreSQL migration indexes the vectors a search over every text field matches" do
+    skip "only PostgreSQL matches the concatenated vectors" unless postgresql?
+    index = ActiveSearch.index(:products)
+    source = index.store.migration_source(index)
+    connection = ActiveRecord::Base.connection
+
+    begin
+      connection.drop_table(source.table_name, if_exists: true)
+      Object.send(:remove_const, source.class_name) if Object.const_defined?(source.class_name)
+      Object.class_eval(source.to_ruby) # rubocop:disable Security/Eval
+      Object.const_get(source.class_name).new.migrate(:up)
+
+      combined = connection.indexes(source.table_name).find { |i| i.columns.is_a?(String) }
+      assert_not_nil combined, "no expression index over the concatenated vectors"
+
+      # An empty table is cheaper to scan, so the planner is told not to, to see what it could use.
+      plan = connection.transaction do
+        connection.execute("SET LOCAL enable_seqscan = off")
+        connection.select_values("EXPLAIN #{index.search("ruby").to_native_query.to_sql}").join("\n")
+      end
+      assert_match combined.name, plan
+    ensure
+      connection.drop_table(source.table_name, if_exists: true)
+    end
+  end
+
   test "the migration asks for a float wide enough for a Ruby Float" do
     run_migration(:up)
     connection = ActiveRecord::Base.connection
