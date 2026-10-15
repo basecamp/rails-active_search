@@ -40,6 +40,14 @@ module ActiveSearch
       @total.exact?
     end
 
+    def limit_value
+      @limit
+    end
+
+    def offset_value
+      @offset
+    end
+
     # Returns the number of this page's hits that could not be loaded as records.
     #
     # A missing record or loading scope can increase this count. It is independent of #partial?,
