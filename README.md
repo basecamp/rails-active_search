@@ -209,7 +209,15 @@ with adapter: sqlserver, and configure Active Search with adapter: sqlserver.
 The SQL Server instance must have the Full-Text Search component installed. Generated migrations
 fail explicitly when FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') does not report it. They
 create a shared active_search catalog, a unique key index on the document table primary key, and
-one native full-text index over all declared text fields.
+one native full-text index over all declared text fields. The index uses automatic change tracking,
+so committed application writes become searchable without a separate population scheduler.
+
+SQL Server applications must use SQL schema dumps because Rails' Ruby schema dumper cannot
+represent full-text catalogs or indexes. Set `config.active_record.schema_format = :sql` before
+running the generated migrations, commit `db/structure.sql`, and use `db:structure:load` when
+bootstrapping a database. A database loaded from `schema.rb` has the document tables but not their
+native full-text objects; rebuild it from migrations or add a corrective migration containing the
+generated full-text statements before searching.
 
 SQL Server searches with CONTAINSTABLE, including native relevance RANK. Multiple plain terms are
 combined with AND, balanced double quotes preserve phrase searches, and field-subset searches use

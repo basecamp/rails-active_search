@@ -43,9 +43,8 @@ module SqlserverFulltextSchema
         key_index = "index_#{table}_on_id_for_fulltext"
         connection.execute(
           "CREATE FULLTEXT INDEX ON [#{table}] (#{fields}) KEY INDEX [#{key_index}] " \
-            "ON [active_search] WITH CHANGE_TRACKING OFF, NO POPULATION"
+            "ON [active_search] WITH CHANGE_TRACKING AUTO"
         )
-        connection.execute("ALTER FULLTEXT INDEX ON [#{table}] SET CHANGE_TRACKING MANUAL")
       end
   end
 end

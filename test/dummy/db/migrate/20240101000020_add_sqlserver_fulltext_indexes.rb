@@ -23,7 +23,7 @@ class AddSqlserverFulltextIndexes < ActiveRecord::Migration[8.1]
       key_index = "index_#{table}_on_id_for_fulltext"
       add_index table, :id, unique: true, name: key_index
       fields = columns.map { |column| "[#{column}] LANGUAGE 1033" }.join(", ")
-      execute "CREATE FULLTEXT INDEX ON [#{table}] (#{fields}) KEY INDEX [#{key_index}] ON [active_search] WITH CHANGE_TRACKING MANUAL"
+      execute "CREATE FULLTEXT INDEX ON [#{table}] (#{fields}) KEY INDEX [#{key_index}] ON [active_search] WITH CHANGE_TRACKING AUTO"
     end
   end
 

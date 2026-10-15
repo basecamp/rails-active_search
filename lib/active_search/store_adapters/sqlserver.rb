@@ -33,7 +33,7 @@ module ActiveSearch
           "      direction.up do",
           "        execute \"IF FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') <> 1 THROW 50000, 'SQL Server Full-Text Search is not installed', 1\"",
           "        execute \"IF NOT EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE name = '#{CATALOG_NAME}') CREATE FULLTEXT CATALOG [#{CATALOG_NAME}]\"",
-          "        execute \"CREATE FULLTEXT INDEX ON [#{table_name}] (#{columns}) KEY INDEX [#{key_index}] ON [#{CATALOG_NAME}] WITH CHANGE_TRACKING MANUAL\"",
+          "        execute \"CREATE FULLTEXT INDEX ON [#{table_name}] (#{columns}) KEY INDEX [#{key_index}] ON [#{CATALOG_NAME}] WITH CHANGE_TRACKING AUTO\"",
           "      end",
           "      direction.down do",
           "        execute \"DROP FULLTEXT INDEX ON [#{table_name}]\"",
@@ -100,11 +100,9 @@ module ActiveSearch
       end
 
       def refresh(index_name)
-        index = ActiveSearch.index(index_name)
-        model = connection_model_for(index)
-        connection = model.connection
-
-        wait_for_population(connection, model.table_name)
+        models_for_store_name(index_name).each do |model|
+          wait_for_population(model.connection, model.table_name)
+        end
       end
 
       def capabilities
@@ -123,9 +121,7 @@ module ActiveSearch
       private
         def wait_for_population(connection, table_name)
           object_id = connection.select_value("SELECT OBJECT_ID(#{connection.quote(table_name)})").to_i
-          start_population(connection, table_name)
           deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + options.fetch(:population_timeout, 120)
-          population_observed = false
           loop do
             pending_changes, population_status, population = connection.uncached do
               [
@@ -143,8 +139,7 @@ module ActiveSearch
               ]
             end
             crawl_completed = [ true, 1 ].include?(population.fetch("has_crawl_completed"))
-            population_observed ||= population_status.nonzero? || !crawl_completed
-            break if population_observed && crawl_completed && population_status.zero?
+            break if pending_changes.zero? && crawl_completed && population_status.zero?
 
             if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
               raise ActiveRecord::StatementTimeout,
@@ -156,10 +151,17 @@ module ActiveSearch
           end
         end
 
-        def start_population(connection, table_name)
-          quoted_table = connection.quote_table_name(table_name)
+        def models_for_store_name(index_name)
+          indexes = ActiveSearch.index_names.filter_map do |name|
+            index = ActiveSearch.index(name)
+            index if index.store.equal?(self) && index.index_name == index_name.to_sym
+          end
+          if indexes.empty?
+            raise ConfigurationError, "No index on this store uses the name :#{index_name}"
+          end
 
-          connection.execute("ALTER FULLTEXT INDEX ON #{quoted_table} START UPDATE POPULATION")
+          indexes.map { |index| connection_model_for(index) }
+            .uniq { |model| [ model.connection.object_id, model.table_name ] }
         end
 
         def fulltext_key_index_name(table_name)

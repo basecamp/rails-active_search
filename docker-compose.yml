@@ -74,7 +74,7 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD to a strong local password}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-}
     ports:
       - "1433:1433"
     healthcheck:

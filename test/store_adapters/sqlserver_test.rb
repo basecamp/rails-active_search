@@ -27,4 +27,21 @@ class SqlserverTest < ActiveSupport::TestCase
 
     assert_equal "string", ActiveSearch::StoreAdapters::Sqlserver.new.expected_native_type(field)
   end
+
+  test "generated migrations enable automatic full-text change tracking" do
+    index = ActiveSearch.index(:articles)
+    migration = index.store.migration_source(index).to_ruby
+
+    assert_includes migration, "WITH CHANGE_TRACKING AUTO"
+    assert_no_match(/CHANGE_TRACKING MANUAL/, migration)
+  end
+
+  test "refresh resolves a configured store index name and accepts an already idle population" do
+    index = ActiveSearch.define_index(:sqlserver_refresh_probe, source: "Article",
+      index_name: :aliased_articles, document_class: "ArticleDocument") { text :title; text :content }
+
+    assert_nothing_raised { index.store.refresh(index.index_name) }
+  ensure
+    ActiveSearch.configuration.unregister_index(:sqlserver_refresh_probe)
+  end
 end
