@@ -45,7 +45,7 @@ module ActiveSearch
               scope = if condition.is_a?(ActiveSearch::Conditions::Group)
                 apply_not_group(scope, condition, definition)
               elsif collection_field?(definition, condition.field)
-                scope.where.not(Arel.sql(collection_predicate(scope, condition, definition[condition.field])))
+                apply_not_collection(scope, condition, definition)
               else
                 apply_not_filter(scope, condition.field, filter_value_for(condition))
               end
@@ -62,6 +62,13 @@ module ActiveSearch
 
             ast = branches.reduce { |a, b| a.or(b) }.where_clause.ast
             scope.where.not(Arel::Nodes::NamedFunction.new("COALESCE", [ ast, Arel::Nodes.build_quoted(false) ]))
+          end
+
+          # COALESCE for the same reason: an absent collection is NULL, and overlap with NULL is
+          # UNKNOWN on PostgreSQL and MySQL, so the rejection would drop the document too.
+          def apply_not_collection(scope, condition, definition)
+            predicate = Arel.sql(collection_predicate(scope, condition, definition[condition.field]))
+            scope.where.not(Arel::Nodes::NamedFunction.new("COALESCE", [ predicate, Arel::Nodes.build_quoted(false) ]))
           end
 
           def collection_field?(definition, field)
