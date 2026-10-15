@@ -20,11 +20,18 @@ module ActiveSearch
 
       # A column is filterable. It is searchable only where its tsvector companion exists, since
       # that is the column a query matches against.
+      #
+      # A search over several fields matches their concatenation, so terms can be split across
+      # them, and no per-field index serves that expression. The default search covers every text
+      # field, so that concatenation gets its own index; a search over a subset uses the per-field
+      # one where it names a single field.
       def search_index_lines(table_name, text_names)
-        [ "" ] + text_names.flat_map do |name|
+        lines = [ "" ] + text_names.flat_map do |name|
           [ "    add_column :#{table_name}, :#{name}_vector, :tsvector",
             "    add_index :#{table_name}, :#{name}_vector, using: :gin" ]
         end
+        lines << "    add_index :#{table_name}, \"(#{vector_expression(text_names)})\", using: :gin" if text_names.many?
+        lines
       end
 
       # A tsvector column records that it is a tsvector and not which configuration built it, so a
