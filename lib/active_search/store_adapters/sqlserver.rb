@@ -123,23 +123,17 @@ module ActiveSearch
           object_id = connection.select_value("SELECT OBJECT_ID(#{connection.quote(table_name)})").to_i
           deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + options.fetch(:population_timeout, 120)
           loop do
-            pending_changes, population_status, population = connection.uncached do
+            pending_changes, population_status = connection.uncached do
               [
                 connection.select_value(
                   "SELECT OBJECTPROPERTYEX(#{object_id}, 'TableFulltextPendingChanges')"
                 ).to_i,
                 connection.select_value(
                   "SELECT OBJECTPROPERTYEX(#{object_id}, 'TableFulltextPopulateStatus')"
-                ).to_i,
-                connection.select_one(<<~SQL.squish)
-                  SELECT has_crawl_completed
-                  FROM sys.fulltext_indexes
-                  WHERE object_id = #{object_id}
-                SQL
+                ).to_i
               ]
             end
-            crawl_completed = [ true, 1 ].include?(population.fetch("has_crawl_completed"))
-            break if pending_changes.zero? && crawl_completed && population_status.zero?
+            break if pending_changes.zero? && population_status.zero?
 
             if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
               raise ActiveRecord::StatementTimeout,
