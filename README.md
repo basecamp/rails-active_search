@@ -193,6 +193,19 @@ end
 add_index :article_documents, :title_vector, using: :gin
 ```
 
+Documents and queries are stemmed with the `english` text search configuration. Set another one
+with `text_search_config`:
+
+```yaml
+production:
+  adapter: postgresql
+  text_search_config: italian
+```
+
+Any configuration the database knows works, including `simple` (no stemming, no stop words) or a
+custom one made with `CREATE TEXT SEARCH CONFIGURATION`. A tsvector column does not record the
+configuration that built it, so reindex after changing it.
+
 **MySQL** uses a FULLTEXT index:
 
 ```ruby

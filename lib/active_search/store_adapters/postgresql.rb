@@ -4,6 +4,13 @@ module ActiveSearch
     #
     # Searches the application database through Active Record, so it takes no connection options.
     #
+    # ==== Options
+    #
+    # * +:text_search_config+ - The text search configuration that stems documents and queries, such
+    #   as <tt>"italian"</tt> or <tt>"simple"</tt>. Defaults to <tt>"english"</tt>. The tsvector
+    #   columns do not record it, so reindex after changing it.
+    # * +:max_result_window+ - The store's largest <tt>offset + limit</tt>.
+    #
     # Every searchable field needs a <tt><name>_vector</tt> tsvector column beside its raw one: the
     # query matches the vector and the read selects the column. The generated migration adds both,
     # and a write fills both.
@@ -18,6 +25,17 @@ module ActiveSearch
 
       include QueryBuilding, Highlighting
 
+      DEFAULT_TEXT_SEARCH_CONFIG = "english".freeze
+
+      def initialize(**options)
+        super
+        @text_search_config = extract_text_search_config(self.options)
+      end
+
+      # The configuration every to_tsvector, websearch_to_tsquery and ts_headline is given. One for
+      # the whole store: a query stemmed differently from the vectors it matches finds nothing.
+      attr_reader :text_search_config
+
       # A column is filterable. It is searchable only where its tsvector companion exists, since
       # that is the column a query matches against.
       def search_index_lines(table_name, text_names)
@@ -29,6 +47,7 @@ module ActiveSearch
 
       # A tsvector column records that it is a tsvector and not which configuration built it, so a
       # column filled with to_tsvector('simple') verifies against one this adapter wrote with 'english'.
+      # That is why changing text_search_config needs a reindex the schema check cannot ask for.
       def search_native_type
         "tsvector"
       end
@@ -83,7 +102,7 @@ module ActiveSearch
         # tsvector nullifies every vector_a || vector_b it joins, hiding the document's other fields.
         field_values = field_names.map { |f| conn.quote(document.data[f]&.to_s) }
         filter_values = filters.map { |name, value| quote_filter_value(conn, definition[name], value) }
-        vector_values = field_names.map { |f| "to_tsvector('english', #{conn.quote(document.data[f].to_s)})" }
+        vector_values = field_names.map { |f| "to_tsvector(#{regconfig_sql(conn)}, #{conn.quote(document.data[f].to_s)})" }
 
         all_values = id_values + field_values + filter_values + vector_values
         update_parts = (field_names.map(&:to_s) + filter_names.map(&:to_s) + vector_columns).map { |c| "#{c} = EXCLUDED.#{c}" }
@@ -111,6 +130,24 @@ module ActiveSearch
       end
 
       private
+        # Quoted and cast, so the name reaches PostgreSQL as a value: an unknown one raises there
+        # rather than splicing into the statement.
+        def regconfig_sql(conn)
+          "#{conn.quote(text_search_config)}::regconfig"
+        end
+
+        def extract_text_search_config(options)
+          config = options.delete(:text_search_config) { DEFAULT_TEXT_SEARCH_CONFIG }
+
+          unless (config.is_a?(String) || config.is_a?(Symbol)) && !config.to_s.strip.empty?
+            raise ConfigurationError,
+              "text_search_config must name a PostgreSQL text search configuration, such as " \
+              "\"english\" or \"simple\". Got #{config.inspect}."
+          end
+
+          config.to_s
+        end
+
         # This adapter writes its own SQL, so a value never passes through the column's Active Record
         # type and a collection reaches quote as an Array. Encoded here instead, as the json type
         # would have done on the way in.
