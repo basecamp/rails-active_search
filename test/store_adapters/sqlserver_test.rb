@@ -36,6 +36,21 @@ class SqlserverTest < ActiveSupport::TestCase
     assert_no_match(/CHANGE_TRACKING MANUAL/, migration)
   end
 
+  test "generated migrations omit full-text DDL when there are no searchable fields" do
+    assert_empty ActiveSearch::StoreAdapters::Sqlserver.new.search_index_lines(:filter_only, [])
+  end
+
+  test "generated migrations shorten long key index names deterministically" do
+    store = ActiveSearch::StoreAdapters::Sqlserver.new
+    table_name = "documents_#{"x" * 100}"
+    lines = store.search_index_lines(table_name, [ :title ])
+    key_index = lines.grep(/add_index/).first.match(/name: :(\w+)/)[1]
+
+    assert_operator key_index.length, :<=, 128
+    assert_includes lines.join("\n"), "KEY INDEX [#{key_index}]"
+    assert_equal lines, store.search_index_lines(table_name, [ :title ])
+  end
+
   test "refresh resolves a configured store index name and accepts an already idle population" do
     index = ActiveSearch.define_index(:sqlserver_refresh_probe, source: "Article",
       index_name: :aliased_articles, document_class: "ArticleDocument") { text :title; text :content }
@@ -43,7 +58,10 @@ class SqlserverTest < ActiveSupport::TestCase
       store_name: :primary, index_name: :aliased_articles,
       document_class: "ArticleDocument") { text :title; text :content }
 
-    assert_nothing_raised { index.store.refresh(index.index_name) }
+    refresh = index.store.method(:refresh)
+    refresh = refresh.super_method while refresh.owner == TestDeferredRefresh
+
+    assert_nothing_raised { refresh.call(index.index_name) }
   ensure
     ActiveSearch.configuration.unregister_index(:sqlserver_refresh_probe)
     ActiveSearch.configuration.unregister_index(:sqlserver_other_store_probe)

@@ -1,3 +1,5 @@
+require "digest"
+
 module ActiveSearch
   module StoreAdapters
     # Store adapter for Microsoft SQL Server Full-Text Search, selected with
@@ -16,12 +18,15 @@ module ActiveSearch
       include QueryBuilding
 
       CATALOG_NAME = "active_search".freeze
+      MAX_IDENTIFIER_LENGTH = 128
 
       def migration_preamble_lines
         [ "  disable_ddl_transaction!", "" ]
       end
 
       def search_index_lines(table_name, text_names)
+        return [] if text_names.empty?
+
         key_index = fulltext_key_index_name(table_name)
         columns = text_names.map { |name| "[#{name}] LANGUAGE 1033" }.join(", ")
 
@@ -163,7 +168,11 @@ module ActiveSearch
         end
 
         def fulltext_key_index_name(table_name)
-          "index_#{table_name}_on_id_for_fulltext"
+          name = "index_#{table_name}_on_id_for_fulltext"
+          return name if name.length <= MAX_IDENTIFIER_LENGTH
+
+          digest = Digest::SHA256.hexdigest(name).first(10)
+          "#{name.first(MAX_IDENTIFIER_LENGTH - digest.length - 1)}_#{digest}"
         end
     end
   end

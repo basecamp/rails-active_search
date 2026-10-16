@@ -6,11 +6,6 @@ BackendLock.acquire(ENV.fetch("SEARCH_ADAPTER", "sqlite"))
 
 require_relative "../test/dummy/config/environment"
 
-# Active Record's Ruby schema dumper preserves SQL Server's unique FTS key indexes but cannot
-# represent full-text catalogs or indexes. Rebuild that native-only part after test schema load.
-require_relative "support/sqlserver_fulltext_schema"
-SqlserverFulltextSchema.rebuild! if ENV["SEARCH_ADAPTER"] == "sqlserver"
-
 # A stand-in record for testing Index#add with arbitrary document data.
 class TestRecord
   include GlobalID::Identification
@@ -37,6 +32,11 @@ end
 ActiveRecord::Migrator.migrations_paths = [ File.expand_path("../test/dummy/db/migrate", __dir__) ]
 ActiveRecord::Migrator.migrations_paths << File.expand_path("../db/migrate", __dir__)
 require "rails/test_help"
+
+# Active Record's Ruby schema dumper preserves SQL Server's unique FTS key indexes but cannot
+# represent full-text catalogs or indexes. Rebuild that native-only part after test schema load.
+require_relative "support/sqlserver_fulltext_schema"
+SqlserverFulltextSchema.rebuild! if ENV["SEARCH_ADAPTER"] == "sqlserver"
 
 if ActiveSupport::TestCase.respond_to?(:fixture_paths=)
   ActiveSupport::TestCase.fixture_paths = [ File.expand_path("fixtures", __dir__) ]
