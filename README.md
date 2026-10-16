@@ -212,11 +212,10 @@ create a shared active_search catalog, a unique key index on the document table 
 one native full-text index over all declared text fields. The index uses automatic change tracking,
 so committed application writes become searchable without a separate population scheduler.
 
-SQL Server applications must use SQL schema dumps because Rails' Ruby schema dumper cannot
-represent full-text catalogs or indexes. Set `config.active_record.schema_format = :sql` before
-running the generated migrations, commit `db/structure.sql`, and use `db:structure:load` when
-bootstrapping a database. A database loaded from `schema.rb` has the document tables but not their
-native full-text objects; rebuild it from migrations or add a corrective migration containing the
+Treat migrations as the authoritative database definition for SQL Server. Neither Rails' Ruby
+schema dumper nor activerecord-sqlserver-adapter's SQL structure dump preserves full-text catalogs
+and indexes. A database loaded from either dump has the document tables but not their native
+full-text objects; rebuild it from migrations or add a corrective migration containing the
 generated full-text statements before searching.
 
 SQL Server searches with CONTAINSTABLE, including native relevance RANK. Multiple plain terms are
