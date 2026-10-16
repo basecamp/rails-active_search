@@ -94,7 +94,7 @@ class AdapterTest < ActiveSupport::TestCase
 
   test "a float field filters by value and by range" do
     skip "products index is not defined for the database adapters" if
-      %i[sqlite mysql postgresql].include?(store_adapter_name)
+      %i[sqlite mysql postgresql sqlserver].include?(store_adapter_name)
 
     cheap = Product.create!(name: "Widget small", description: "Priced low", price: 9.99, category: "tools")
     dear = Product.create!(name: "Widget large", description: "Priced high", price: 199.5, category: "tools")

@@ -39,6 +39,9 @@ gem "mysql2"
 # PostgreSQL adapter (for testing)
 gem "pg"
 
+# Microsoft SQL Server adapter (for testing)
+gem "activerecord-sqlserver-adapter", "~> 8.1"
+
 # Profiling
 gem "stackprof"
 

@@ -1,5 +1,8 @@
 test:
   adapter: <%= ENV.fetch("SEARCH_ADAPTER", "sqlite") %>
+<% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "sqlserver" %>
+  population_timeout: <%= ENV.fetch("SQLSERVER_POPULATION_TIMEOUT", 120) %>
+<% end %>
 <% if ENV.fetch("SEARCH_ADAPTER", "sqlite") == "elasticsearch" %>
   hosts:
     - host: localhost

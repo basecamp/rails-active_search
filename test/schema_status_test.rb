@@ -12,7 +12,8 @@ class SchemaStatusTest < ActiveSupport::TestCase
 
     verification = ActiveSearch::Schema.verify(@index)
 
-    assert_equal 1, ActiveSearch::Schema.population_of(@index, verification)
+    timeout = store_adapter_name == :sqlserver ? 15 : nil
+    assert_equal 1, ActiveSearch::Schema.population_of(@index, verification, timeout: timeout)
   end
 
   test "a missing index counts nothing rather than guessing zero" do
@@ -26,7 +27,7 @@ class SchemaStatusTest < ActiveSupport::TestCase
     probe = ActiveSearch.index(:creation_probes)
     step = ActiveSearch::Schema.next_step_for(probe, ActiveSearch::Schema.verify(probe))
 
-    if %i[ sqlite mysql postgresql ].include?(store_adapter_name)
+    if %i[ sqlite mysql postgresql sqlserver ].include?(store_adapter_name)
       assert_equal "rails generate active_search:document creation_probes, then rails db:migrate", step
     elsif probe.store.capabilities.supports_index_creation?
       assert_equal "rails active_search:index:create INDEX=creation_probes", step

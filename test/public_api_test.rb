@@ -171,7 +171,7 @@ class PublicApiTest < ActiveSupport::TestCase
 
   test "limit(nil) gives to_native_query a scope with no limit to strip" do
     skip "to_native_query is not an ActiveRecord relation on #{store_adapter_name}" unless
-      %i[sqlite mysql postgresql].include?(store_adapter_name)
+      %i[sqlite mysql postgresql sqlserver].include?(store_adapter_name)
 
     default_scope = ActiveSearch.index(:articles).search("ruby").to_native_query
     assert_equal 25, default_scope.limit_value,

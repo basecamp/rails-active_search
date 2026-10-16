@@ -89,7 +89,7 @@ class SchemaVerificationTest < ActiveSupport::TestCase
 
   test "an index that has never been built reports missing rather than raising" do
     skip "only a database adapter resolves a document model" unless
-      %i[ sqlite mysql postgresql ].include?(store_adapter_name)
+      %i[ sqlite mysql postgresql sqlserver ].include?(store_adapter_name)
 
     verification = nil
     assert_nothing_raised { verification = ActiveSearch::Schema.verify(ActiveSearch.index(:products)) }

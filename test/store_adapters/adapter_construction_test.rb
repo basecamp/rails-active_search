@@ -17,7 +17,8 @@ class AdapterConstructionTest < ActiveSupport::TestCase
     manticore: { host: UNREACHABLE_HOST, port: UNREACHABLE_PORT },
     postgresql: {},
     mysql: {},
-    sqlite: {}
+    sqlite: {},
+    sqlserver: {}
   }.freeze
 
   test "every built-in adapter name resolves to a class that inherits from Base" do
@@ -29,14 +30,12 @@ class AdapterConstructionTest < ActiveSupport::TestCase
   end
 
   test "no built-in adapter contacts its backend when constructed" do
-    UNREACHABLE_OPTIONS.each_key do |name|
-      klass = ActiveSearch.configuration.adapter_class_for(name)
-      options = UNREACHABLE_OPTIONS.fetch(name)
+    assert_nothing_raised do
+      UNREACHABLE_OPTIONS.each_key do |name|
+        klass = ActiveSearch.configuration.adapter_class_for(name)
+        options = UNREACHABLE_OPTIONS.fetch(name)
 
-      begin
         klass.new(**options)
-      rescue StandardError => e
-        flunk "#{name} raised while being constructed against an unreachable address: #{e.class}: #{e.message}"
       end
     end
   end

@@ -6,7 +6,7 @@ models across multiple search backends.
 This is **alpha** software. The API is not fixed and may have backward incompatible changes in future.
 
 **Supported adapters:**
-- **Database:** SQLite FTS5, PostgreSQL tsvector, MySQL FULLTEXT
+- **Database:** SQLite FTS5, PostgreSQL tsvector, MySQL FULLTEXT, Microsoft SQL Server Full-Text Search
 - **Search engines:** Elasticsearch, OpenSearch, Solr, Meilisearch, Typesense, Manticore, Redis Search
 
 ## Contents
@@ -201,6 +201,28 @@ add_index :article_documents, [:title, :content], type: :fulltext
 
 MySQL matches a FULLTEXT index by its whole column list. A search that names a subset of the
 fields (see [Queries](#queries)) needs its own index over exactly those columns.
+
+**Microsoft SQL Server** uses a full-text catalog and a native full-text index. Add
+activerecord-sqlserver-adapter 8.1 to a Rails 8.1 application's Gemfile, configure Active Record
+with adapter: sqlserver, and configure Active Search with adapter: sqlserver.
+
+The SQL Server instance must have the Full-Text Search component installed. Generated migrations
+fail explicitly when FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') does not report it. They
+create a shared active_search catalog, a unique key index on the document table primary key, and
+one native full-text index over all declared text fields. The index uses automatic change tracking,
+so committed application writes become searchable without a separate population scheduler.
+
+Treat migrations as the authoritative database definition for SQL Server. Neither Rails' Ruby
+schema dumper nor activerecord-sqlserver-adapter's SQL structure dump preserves full-text catalogs
+and indexes. A database loaded from either dump has the document tables but not their native
+full-text objects; rebuild it from migrations or add a corrective migration containing the
+generated full-text statements before searching.
+
+SQL Server searches with CONTAINSTABLE, including native relevance RANK. Multiple plain terms are
+combined with AND, balanced double quotes preserve phrase searches, and field-subset searches use
+the selected full-text columns. SQL Server's English word breaker, stemmer, stoplist, and rank
+algorithm differ from the other database engines; scores are meaningful only within one query and
+backend. Highlighting is not currently supported.
 
 ### Search engine adapters
 
@@ -786,6 +808,7 @@ capabilities.supports_snippet_unit?(:words)     # or :characters
 | PostgreSQL | yes | words | yes | yes | no | yes | no | no | yes |
 | SQLite | yes | words | yes | yes | no | yes | no | no | yes |
 | MySQL | no | none | no | no | no | yes | no | no | no |
+| SQL Server | no | none | no | no | no | yes | no | no | yes |
 | Redis Search | yes | none | no | no | no | yes | no | no | no |
 | Manticore | yes | characters | no | no | no | no | no | no | yes |
 
@@ -830,6 +853,7 @@ digest.
 | Redis Stack | `7.4.0-v8` |
 | Manticore | `29.0.2` |
 | MySQL | `8.4` |
+| SQL Server | `2022` |
 | PostgreSQL | `18` |
 | SQLite | whatever the `sqlite3` gem bundles |
 

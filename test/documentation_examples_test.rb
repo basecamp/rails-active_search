@@ -86,7 +86,7 @@ class DocumentationExamplesTest < ActiveSupport::TestCase
   test "to_native_query returns the documented shape for this adapter" do
     native = ActiveSearch.index(:articles).search("ruby").to_native_query
 
-    if %i[sqlite mysql postgresql].include?(store_adapter_name)
+    if %i[sqlite mysql postgresql sqlserver].include?(store_adapter_name)
       assert_kind_of ActiveRecord::Relation, native,
         "the README says database adapters return an ActiveRecord relation"
     else
@@ -109,7 +109,7 @@ class DocumentationExamplesTest < ActiveSupport::TestCase
 
   test "the mergeable relation example composes with another model's query" do
     skip "to_native_query is not a relation on #{store_adapter_name}" unless
-      %i[sqlite mysql postgresql].include?(store_adapter_name)
+      %i[sqlite mysql postgresql sqlserver].include?(store_adapter_name)
 
     scope = ActiveSearch.index(:articles).search("search").limit(nil).to_native_query
 
@@ -234,6 +234,7 @@ class DocumentationExamplesTest < ActiveSupport::TestCase
     postgresql: { highlighting: true, units: [ :words ], markers: true, snippets: true, operator: false, missing: true, subfields: false, string_fields: false, ranges: true },
     sqlite: { highlighting: true, units: [ :words ], markers: true, snippets: true, operator: false, missing: true, subfields: false, string_fields: false, ranges: true },
     mysql: { highlighting: false, units: [], markers: false, snippets: false, operator: false, missing: true, subfields: false, string_fields: false, ranges: false },
+    sqlserver: { highlighting: false, units: [], markers: false, snippets: false, operator: false, missing: true, subfields: false, string_fields: false, ranges: true },
     redis_search: { highlighting: true, units: [], markers: false, snippets: false, operator: false, missing: true, subfields: false, string_fields: false, ranges: false },
     manticore: { highlighting: true, units: [ :characters ], markers: false, snippets: false, operator: false, missing: false, subfields: false, string_fields: false, ranges: true }
   }.freeze
@@ -258,7 +259,8 @@ class DocumentationExamplesTest < ActiveSupport::TestCase
   README_ADAPTER_NAMES = {
     "Elasticsearch" => :elasticsearch, "OpenSearch" => :opensearch, "Solr" => :solr,
     "Meilisearch" => :meilisearch, "Typesense" => :typesense, "PostgreSQL" => :postgresql,
-    "SQLite" => :sqlite, "MySQL" => :mysql, "Redis Search" => :redis_search, "Manticore" => :manticore
+    "SQLite" => :sqlite, "MySQL" => :mysql, "SQL Server" => :sqlserver,
+    "Redis Search" => :redis_search, "Manticore" => :manticore
   }.freeze
 
   README_UNITS = { "characters" => [ :characters ], "words" => [ :words ], "none" => [] }.freeze

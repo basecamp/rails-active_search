@@ -60,6 +60,6 @@ class RawTypesTest < ActiveSupport::TestCase
 
   private
     def database_adapter?
-    %w[sqlite postgresql mysql].include?(ENV.fetch("SEARCH_ADAPTER", "sqlite"))
-  end
+      %w[sqlite postgresql mysql sqlserver].include?(ENV.fetch("SEARCH_ADAPTER", "sqlite"))
+    end
 end

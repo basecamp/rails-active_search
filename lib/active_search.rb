@@ -83,6 +83,7 @@ module ActiveSearch
     autoload :Typesense
     autoload :Opensearch
     autoload :Solr
+    autoload :Sqlserver
     autoload :RedisSearch
     autoload :Manticore
     autoload :Postgresql

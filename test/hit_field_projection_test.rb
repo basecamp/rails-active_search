@@ -5,6 +5,7 @@ class HitFieldProjectionTest < ActiveSupport::TestCase
 
   WRITER_NARROWS_TO_STORE = {
     sqlite: "names its columns", mysql: "names its columns", postgresql: "names its columns",
+    sqlserver: "names its columns",
     manticore: "gets a table holding only declared columns, so the write is refused",
     elasticsearch: "narrows the write to the observed mapping",
     opensearch: "narrows the write to the observed mapping",

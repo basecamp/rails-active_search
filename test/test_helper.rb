@@ -33,6 +33,11 @@ ActiveRecord::Migrator.migrations_paths = [ File.expand_path("../test/dummy/db/m
 ActiveRecord::Migrator.migrations_paths << File.expand_path("../db/migrate", __dir__)
 require "rails/test_help"
 
+# Active Record's Ruby schema dumper preserves SQL Server's unique FTS key indexes but cannot
+# represent full-text catalogs or indexes. Rebuild that native-only part after test schema load.
+require_relative "support/sqlserver_fulltext_schema"
+SqlserverFulltextSchema.rebuild! if ENV["SEARCH_ADAPTER"] == "sqlserver"
+
 if ActiveSupport::TestCase.respond_to?(:fixture_paths=)
   ActiveSupport::TestCase.fixture_paths = [ File.expand_path("fixtures", __dir__) ]
   ActionDispatch::IntegrationTest.fixture_paths = ActiveSupport::TestCase.fixture_paths
@@ -131,7 +136,7 @@ class ActiveSupport::TestCase
         setup_meilisearch_index(index_name, index_instance)
       when :solr
         setup_solr_core(index_name, index_instance)
-      when :sqlite, :mysql, :postgresql
+      when :sqlite, :mysql, :postgresql, :sqlserver
         clean_search_document_for(index_name)
       else
         rebuild_search_index(index_instance)
@@ -510,7 +515,7 @@ module TestDeferredRefresh
   # A bulk write is a write: without this the clear fires at read time and empties what was written.
   def flush_batch(index, operations, **)
     flush_clear(index)
-    super
+    super.tap { pending_refreshes << index.index_name }
   end
 
   # An explicit refresh only marks the index; the read is the only place the answer must be right.
@@ -519,6 +524,14 @@ module TestDeferredRefresh
   end
 
   def search(index, query_context, **)
+    flush_clear(index)
+    refresh_pending(index.index_name)
+    super
+  end
+
+  # to_native_query builds a database relation without going through #search, but that relation
+  # must see the same deferred writes when it is executed.
+  def build_query(index, query_context, **)
     flush_clear(index)
     refresh_pending(index.index_name)
     super
@@ -553,6 +566,8 @@ when "elasticsearch"
   ActiveSearch::StoreAdapters::Elasticsearch.prepend(TestAutoRefresh)
 when "opensearch"
   ActiveSearch::StoreAdapters::Opensearch.prepend(TestAutoRefresh)
+when "sqlserver"
+  ActiveSearch::StoreAdapters::Sqlserver.prepend(TestDeferredRefresh)
 when "meilisearch"
   ActiveSearch::StoreAdapters::Meilisearch.prepend(TestDeferredRefresh)
 end

@@ -1,4 +1,4 @@
-<% sqlite = !%w[ mysql postgresql ].include?(ENV.fetch("SEARCH_ADAPTER", nil)) %>
+<% sqlite = !%w[ mysql postgresql sqlserver ].include?(ENV.fetch("SEARCH_ADAPTER", nil)) %>
 
 default: &default
   max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
@@ -26,6 +26,17 @@ postgresql: &postgresql
   username: <%= ENV.fetch("POSTGRES_USER", "postgres") %>
   password: <%= ENV.fetch("POSTGRES_PASSWORD", "password") %>
   schema_dump: schema_postgresql.rb
+
+sqlserver: &sqlserver
+  <<: *default
+  adapter: sqlserver
+  host: <%= ENV.fetch("SQLSERVER_HOST", "127.0.0.1") %>
+  port: <%= ENV.fetch("SQLSERVER_PORT", 1433) %>
+  username: <%= ENV.fetch("SQLSERVER_USER", "sa") %>
+  password: <%= ENV["SQLSERVER_PASSWORD"] %>
+  login_timeout: 120
+  timeout: 120
+  schema_dump: schema_sqlserver.rb
 
 development:
   <<: *<%= sqlite ? "sqlite" : ENV["SEARCH_ADAPTER"] %>

@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.email       = [ "donal@37signals.com" ]
   spec.homepage    = "https://github.com/basecamp/rails-active_search"
   spec.summary     = "Pluggable search engine adapter for Rails"
-  spec.description = "ActiveSearch provides a unified interface for full-text search across Elasticsearch, MySQL FULLTEXT, and SQLite FTS5"
+  spec.description = "ActiveSearch provides a unified interface for full-text search across search engines and database-native full-text indexes"
   spec.license     = "MIT"
 
   spec.metadata["homepage_uri"] = spec.homepage

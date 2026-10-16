@@ -337,9 +337,14 @@ module ActiveSearch
           begin
             yield
           rescue *client_errors => e
-            # The class, not the message: RSolr::Error::Http#message builds itself from a response
-            # it may not have, and raises from inside this handler. Detail stays on cause.
-            raise AdapterError, "#{self.class.name.demodulize} request failed: #{e.class.name}"
+            detail = begin
+              e.message
+            rescue StandardError
+              nil
+            end
+            message = "#{self.class.name.demodulize} request failed: #{e.class.name}"
+            message = "#{message}: #{detail}" if detail.present?
+            raise AdapterError, message
           end
         end
 

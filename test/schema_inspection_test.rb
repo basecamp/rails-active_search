@@ -80,7 +80,7 @@ class SchemaInspectionTest < ActiveSupport::TestCase
   end
 
   test "schema reading goes through the adapter's own model" do
-    skip "#{store_adapter_name} keeps no table" unless %i[ sqlite mysql postgresql ].include?(store_adapter_name)
+    skip "#{store_adapter_name} keeps no table" unless %i[ sqlite mysql postgresql sqlserver ].include?(store_adapter_name)
     store = @index.store
     elsewhere = Class.new(ActiveRecord::Base) { self.table_name = "articles" }
 
@@ -95,7 +95,7 @@ class SchemaInspectionTest < ActiveSupport::TestCase
 
   test "requirements name the key columns a database reads and writes by" do
     skip "#{store_adapter_name} does not join a document to a row" unless
-      %i[ sqlite mysql postgresql ].include?(store_adapter_name)
+      %i[ sqlite mysql postgresql sqlserver ].include?(store_adapter_name)
     required = @index.store.schema_requirements(@index)
 
     assert_not_empty key_columns

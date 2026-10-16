@@ -190,6 +190,7 @@ module ActiveSearch
         register_adapter :postgresql, "ActiveSearch::StoreAdapters::Postgresql"
         register_adapter :mysql, "ActiveSearch::StoreAdapters::Mysql"
         register_adapter :sqlite, "ActiveSearch::StoreAdapters::Sqlite"
+        register_adapter :sqlserver, "ActiveSearch::StoreAdapters::Sqlserver"
       end
 
       # An adapter file requires its client library, so a missing gem raises LoadError, which is

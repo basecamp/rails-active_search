@@ -123,6 +123,11 @@ module ActiveSearch
         []
       end
 
+      # Class-level migration declarations an adapter needs before #change.
+      def migration_preamble_lines
+        []
+      end
+
       # The declared fields that become ordinary columns on the document table.
       def table_fields(definition)
         definition.fields

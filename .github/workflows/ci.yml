@@ -144,6 +144,70 @@ jobs:
           path: ${{ github.workspace }}/tmp/screenshots
           if-no-files-found: ignore
 
+  test-sqlserver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # v1.324.0
+        with:
+          ruby-version: ruby-3.4.7
+          bundler-cache: true
+
+      - name: Generate SQL Server password
+        run: |
+          password="Sql1!$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          echo "MSSQL_SA_PASSWORD=$password" >> "$GITHUB_ENV"
+          echo "SQLSERVER_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server with Full-Text Search
+        run: docker compose up --build --wait sqlserver
+
+      - name: Create test database
+        run: |
+          for attempt in {1..30}; do
+            if docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
+              -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
+              -Q "CREATE DATABASE active_search_test"; then
+              exit 0
+            fi
+
+            echo "SQL Server is not ready for database creation (attempt $attempt/30)"
+            sleep 5
+          done
+
+          exit 1
+
+      - name: Run SQL Server tests
+        env:
+          RAILS_ENV: test
+          SEARCH_ADAPTER: sqlserver
+        run: |
+          bin/rails db:test:prepare
+          mapfile -t test_files < <(find test -path test/dummy -prune -o -name '*_test.rb' -print | sort)
+          shard_files=()
+          for index in "${!test_files[@]}"; do
+            if ((index % 4 == ${{ matrix.shard }})); then
+              shard_files+=("${test_files[$index]}")
+            fi
+          done
+          bin/rails test "${shard_files[@]}"
+
+      - name: Keep SQL Server logs
+        if: failure()
+        run: |
+          docker compose logs sqlserver
+          docker compose exec -T sqlserver sh -c \
+            'find /var/opt/mssql/log -maxdepth 1 -name "SQLFT*" -type f -exec iconv -f UTF-16LE -t UTF-8 {} \;'
+
   test-elasticsearch:
     runs-on: ubuntu-latest
     services:

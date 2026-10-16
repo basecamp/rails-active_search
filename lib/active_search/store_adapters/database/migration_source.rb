@@ -48,6 +48,7 @@ module ActiveSearch
         def to_ruby
           <<~RUBY
             class #{class_name} < ActiveRecord::Migration[#{ActiveRecord::Migration.current_version}]
+            #{@store.migration_preamble_lines.join("\n")}
               def change
                 create_table :#{table_name} do |t|
             #{column_lines.join("\n").indent(6)}

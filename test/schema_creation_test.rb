@@ -165,7 +165,7 @@ class SchemaCreationTest < ActiveSupport::TestCase
     end
 
     def database_adapter?
-      %i[ sqlite mysql postgresql ].include?(store_adapter_name)
+      %i[ sqlite mysql postgresql sqlserver ].include?(store_adapter_name)
     end
 
     def without_status(_plan)
